@@ -11,25 +11,27 @@ jobs:
       - name: Set up Xcode
         run: sudo xcode-select -s /Applications/Xcode.app
 
-      - name: Build Archive
+      - name: Build Archive (No Signing)
         run: |
           xcodebuild archive \
             -project CarPlaySwiftUI/CarPlaySwiftUI.xcodeproj \
             -scheme CarPlaySwiftUI \
             -archivePath build/CarPlaySwiftUI.xcarchive \
-            -destination 'generic/platform=iOS'
+            -destination 'generic/platform=iOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO
 
-      - name: Export IPA
+      - name: Create IPA Manually
         run: |
-          echo '<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"><plist version="1.0"><dict><key>method</key><string>ad-hoc</string><key>signingStyle</key><string>manual</string></dict></plist>' > exportOptions.plist
-          
-          xcodebuild -exportArchive \
-            -archivePath build/CarPlaySwiftUI.xcarchive \
-            -exportOptionsPlist exportOptions.plist \
-            -exportPath build/ipa
+          mkdir -p build/ipa/Payload
+          cp -R build/CarPlaySwiftUI.xcarchive/Products/Applications/*.app build/ipa/Payload/
+          cd build/ipa
+          zip -r MyCarApp.ipa Payload
+          cd ../..
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
           name: MyCarApp-IPA
-          path: build/ipa/*.ipa
+          path: build/ipa/MyCarApp.ipa
