@@ -11,33 +11,33 @@ jobs:
       - name: Set up Xcode
         run: sudo xcode-select -s /Applications/Xcode.app
 
-      - name: Clean and Build Archive
+      - name: Force Disable Signing
         run: |
-          # تنظيف أي إعدادات قديمة في المشروع
-          xcodebuild clean -project CarPlaySwiftUI/CarPlaySwiftUI.xcodeproj -scheme CarPlaySwiftUI
-          
-          # بناء الأرشيف بدون الحاجة لتوقيع أو شهادات
-          xcodebuild archive \
+          # هذا الأمر يقوم بمسح "فريق التطوير" من إعدادات المشروع ليتوقف عن طلب الشهادة
+          sed -i '' 's/DevelopmentTeam = [A-Z0-9]*;//g' CarPlaySwiftUI/CarPlaySwiftUI.xcodeproj/project.pbxproj
+          sed -i '' 's/ProvisioningStyle = Automatic;//g' CarPlaySwiftUI/CarPlaySwiftUI.xcodeproj/project.pbxproj
+
+      - name: Build and Package
+        run: |
+          # البناء بصيغة Simulator لتجنب قيود الحماية
+          xcodebuild build \
             -project CarPlaySwiftUI/CarPlaySwiftUI.xcodeproj \
             -scheme CarPlaySwiftUI \
-            -archivePath build/CarPlaySwiftUI.xcarchive \
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            AD_HOC_CODE_SIGNING_ALLOWED=YES
+            CODE_SIGN_IDENTITY=""
 
-      - name: Create IPA from Simulator Build
-        run: |
-          mkdir -p build/ipa/Payload
-          cp -R build/CarPlaySwiftUI.xcarchive/Products/Applications/*.app build/ipa/Payload/
-          cd build/ipa
-          # تحويل التطبيق إلى ملف IPA مضغوط
+          # تجميع الملفات يدوياً في ملف IPA
+          mkdir -p build/Payload
+          APP_PATH=$(find ~/Library/Developer/Xcode/DerivedData -name "*.app" | head -n 1)
+          cp -R "$APP_PATH" build/Payload/
+          cd build
           zip -r MyCarApp.ipa Payload
-          cd ../..
+          cd ..
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
           name: MyCarApp-IPA
-          path: build/ipa/MyCarApp.ipa
+          path: build/MyCarApp.ipa
